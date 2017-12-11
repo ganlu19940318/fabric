@@ -246,6 +246,16 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		version = util.GetSysCCVersion()
 	}
 
+	c, _ := redis.Dial("tcp", "127.0.0.1:6379")
+	temp, err := redis.String(c.Do("GET", txid))
+	if temp == nil{
+		c.Do("SET", txid, "1")
+		c.Close()
+	}else {
+		c.Close()
+		return nil, nil, nil, nil, err
+	}
+	
 	//---3. execute the proposal and get simulation results
 	var simResult []byte
 	var res *pb.Response
