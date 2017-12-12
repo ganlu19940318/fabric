@@ -246,7 +246,9 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		version = util.GetSysCCVersion()
 	}
 
-	c, _ := redis.Dial("tcp", "127.0.0.1:6379")
+	//connect to redis
+	c, _ := redis.Dial("tcp", "localhost:6379")
+	//check if the cache exits
 	temp, err := redis.String(c.Do("GET", txid))
 	if temp == nil{
 		c.Do("SET", txid, "1")
