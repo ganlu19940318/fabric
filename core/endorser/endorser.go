@@ -30,6 +30,8 @@ import (
 	"github.com/hyperledger/fabric/protos/common"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	putils "github.com/hyperledger/fabric/protos/utils"
+	"github.com/garyburd/redigo/redis"
+	"strconv"
 )
 
 // >>>>> begin errors section >>>>>
@@ -246,18 +248,10 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 		version = util.GetSysCCVersion()
 	}
 
-	//connect to redis
-	c, _ := redis.Dial("tcp", "localhost:6379")
-	//check if the cache exits
-	temp, err := redis.String(c.Do("GET", txid))
-	if temp == nil{
-		c.Do("SET", txid, "1")
-		c.Close()
-	}else {
-		c.Close()
+	if myCode(cis.ChaincodeSpec.Input.Args) == 1{
 		return nil, nil, nil, nil, err
 	}
-	
+
 	//---3. execute the proposal and get simulation results
 	var simResult []byte
 	var res *pb.Response
@@ -275,6 +269,27 @@ func (e *Endorser) simulateProposal(ctx context.Context, chainID string, txid st
 	}
 
 	return cdLedger, res, simResult, ccevent, nil
+}
+func myCode(args [][]byte) int{
+	defer func() int{
+		if err := recover(); err != nil {
+			//fmt.Println("ganlu hello：", err)
+		}
+		return 0
+	}()
+	//----------redis-ganlu--------
+	c, _ := redis.Dial("tcp", "127.1.0.1:6379")
+	temp, _ := redis.String(c.Do("GET", args))
+	value, _ := strconv.Atoi(temp)
+	if value < 5{
+		c.Do("SET", args, value+1, "EX", 60)
+		c.Close()
+		return 0
+	}else {
+		redis.String(c.Do("SET", args, value+1, "EX", 60))
+		c.Close()
+		return 1
+	}
 }
 
 func (e *Endorser) getCDSFromLSCC(ctx context.Context, chainID string, txid string, signedProp *pb.SignedProposal, prop *pb.Proposal, chaincodeID string, txsim ledger.TxSimulator) (*ccprovider.ChaincodeData, error) {
